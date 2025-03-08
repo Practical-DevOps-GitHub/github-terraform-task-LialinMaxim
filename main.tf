@@ -12,6 +12,11 @@ provider "github" {
   owner = var.github_owner
 }
 
+# Retrieve repository information to obtain the node_id (repository_id)
+data "github_repository" "repo" {
+  full_name = "${var.github_owner}/${var.repository}"
+}
+
 ##############################
 # 1. Add collaborator
 ##############################
@@ -32,11 +37,10 @@ resource "github_branch_default" "default" {
 ##############################
 # 3. Branch protection rules
 ##############################
-# Protect the "develop" branch: require pull requests with at least 2 approving reviews.
+# Protect the "develop" branch: pull requests are required with at least 2 approving reviews.
 resource "github_branch_protection" "develop" {
-  repository = var.repository
-  branch     = "develop"
-
+  repository_id = data.github_repository.repo.node_id
+  pattern       = "develop"
   enforce_admins = true
 
   required_pull_request_reviews {
@@ -45,21 +49,20 @@ resource "github_branch_protection" "develop" {
   }
 }
 
-# Protect the "main" branch: require that the owner approves via code owner review.
+# Protect the "main" branch: pull requests require approval with code owner review.
 resource "github_branch_protection" "main" {
-  repository = var.repository
-  branch     = "main"
-
+  repository_id = data.github_repository.repo.node_id
+  pattern       = "main"
   enforce_admins = true
 
   required_pull_request_reviews {
-    dismiss_stale_reviews       = true
-    require_code_owner_reviews  = true
+    dismiss_stale_reviews      = true
+    require_code_owner_reviews = true
   }
 }
 
 ##############################
-# 3b. CODEOWNERS file (assign softservedata as owner for all files on main)
+# 3b. CODEOWNERS file (assign softservedata as the code owner for all files in the "main" branch)
 ##############################
 resource "github_repository_file" "codeowners" {
   repository     = var.repository
@@ -70,7 +73,7 @@ resource "github_repository_file" "codeowners" {
 }
 
 ##############################
-# 4. Add pull request template in .github directory
+# 4. Add pull request template in the .github directory
 ##############################
 resource "github_repository_file" "pull_request_template" {
   repository     = var.repository
@@ -99,15 +102,12 @@ resource "github_repository_deploy_key" "deploy_key" {
 }
 
 ##############################
-# 6. Create Discord notifications via webhook
+# 6. Configure Discord notifications (webhook) for pull requests
 ##############################
-# (Note: Creating a Discord server isn’t natively supported by Terraform.
-# Instead, supply the Discord webhook URL via variable and use it to receive pull request notifications.)
 resource "github_repository_webhook" "discord" {
-  repository = var.repository
-  name       = "Discord"
-  active     = true
-  events     = ["pull_request"]
+  repository_id = data.github_repository.repo.node_id
+  active        = true
+  events        = ["pull_request"]
 
   configuration {
     url          = var.discord_webhook_url
@@ -117,7 +117,7 @@ resource "github_repository_webhook" "discord" {
 }
 
 ##############################
-# 7. Create GitHub Actions secret for PAT
+# 7. Create GitHub Actions secret for PAT (Personal Access Token)
 ##############################
 resource "github_actions_secret" "pat" {
   repository      = var.repository
@@ -149,11 +149,11 @@ variable "deploy_key" {
 }
 
 variable "pat" {
-  description = "Personal Access Token for GitHub Actions with full control of private repositories and orgs."
+  description = "Personal Access Token for GitHub Actions with full control of private repositories and organizations."
   type        = string
 }
 
 variable "discord_webhook_url" {
-  description = "Discord webhook URL for receiving pull request notifications."
+  description = "The URL of the Discord webhook to receive pull request notifications."
   type        = string
 }
