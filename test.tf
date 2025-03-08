@@ -32,8 +32,8 @@ variable "deploy_key" {
   type        = string
 }
 
-variable "DISCORD_WEB_HOOK" {
-  description = "Discord webhook URL for pull request notifications"
+variable "discord_webhook_url" {
+  description = "https://discord.com/api/webhooks/1348026892598509729/4pGfZoE7-pJ4sZroeV2pm_1S7aGxJdwVYkbXXJqZGY1_DGupuVzOrtO9p96siEI0le1v"
   type        = string
 }
 
@@ -112,16 +112,11 @@ resource "github_repository_deploy_key" "deploy_key" {
 }
 
 # Create a webhook to send Discord notifications when a pull request is created
-variable "discord_webhook_url" {
-  description = "https://discord.com/api/webhooks/1348026892598509729/4pGfZoE7-pJ4sZroeV2pm_1S7aGxJdwVYkbXXJqZGY1_DGupuVzOrtO9p96siEI0le1v"
-  type        = string
-}
-
 resource "github_repository_webhook" "discord_webhook" {
   repository = github_repository.repo.name
 
   configuration {
-    url = var.discord_webhook_url  # Use discord_webhook_url variable here
+    url          = var.discord_webhook_url  # Use the discord_webhook_url variable here
     content_type = "json"
   }
 
@@ -131,7 +126,7 @@ resource "github_repository_webhook" "discord_webhook" {
 
 # Save the Terraform code in a repository secret named TERRAFORM
 resource "github_actions_secret" "terraform_secret" {
-  repository  = github_repository.repo.name
-  secret_name = "TERRAFORM"
+  repository      = github_repository.repo.name
+  secret_name     = "TERRAFORM"
   plaintext_value = file("${path.module}/main.tf")
 }
