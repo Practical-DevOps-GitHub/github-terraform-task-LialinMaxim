@@ -12,6 +12,18 @@ terraform {
   }
 }
 
+variable "PAT" {
+  type        = string
+  description = "GitHub Personal Access Token (PAT)"
+  sensitive   = true
+}
+
+variable "github_owner" {
+  type        = string
+  description = "GitHub owner."
+}
+
+
 provider "github" {
   token = var.PAT
   owner = var.github_owner
