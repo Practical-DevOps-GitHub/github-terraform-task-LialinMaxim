@@ -124,10 +124,3 @@ resource "github_repository_webhook" "discord_webhook" {
   events = ["pull_request"]
   active = true
 }
-
-# Save the Terraform code in a repository secret named TERRAFORM
-resource "github_actions_secret" "terraform_secret" {
-  repository      = github_repository.repo.name
-  secret_name     = "TERRAFORM"
-  plaintext_value = file("${path.module}/main.tf")
-}
