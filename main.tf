@@ -12,32 +12,21 @@ provider "github" {
   owner = var.github_owner
 }
 
-# Retrieve repository information to obtain the node_id (repository_id)
 data "github_repository" "repo" {
   full_name = "${var.github_owner}/${var.repository}"
 }
 
-##############################
-# 1. Add collaborator
-##############################
 resource "github_repository_collaborator" "softservedata" {
   repository = var.repository
   username   = "softservedata"
   permission = "push"
 }
 
-##############################
-# 2. Set default branch to "develop"
-##############################
 resource "github_branch_default" "default" {
   repository = var.repository
   branch     = "develop"
 }
 
-##############################
-# 3. Branch protection rules
-##############################
-# Protect the "develop" branch: pull requests are required with at least 2 approving reviews.
 resource "github_branch_protection" "develop" {
   repository_id = data.github_repository.repo.node_id
   pattern       = "develop"
@@ -49,7 +38,6 @@ resource "github_branch_protection" "develop" {
   }
 }
 
-# Protect the "main" branch: pull requests require approval with code owner review.
 resource "github_branch_protection" "main" {
   repository_id = data.github_repository.repo.node_id
   pattern       = "main"
@@ -61,9 +49,7 @@ resource "github_branch_protection" "main" {
   }
 }
 
-##############################
-# 3b. CODEOWNERS file (assign softservedata as the code owner for all files in the "main" branch)
-##############################
+
 resource "github_repository_file" "codeowners" {
   repository     = var.repository
   file           = ".github/CODEOWNERS"
@@ -72,9 +58,6 @@ resource "github_repository_file" "codeowners" {
   branch         = "main"
 }
 
-##############################
-# 4. Add pull request template in the .github directory
-##############################
 resource "github_repository_file" "pull_request_template" {
   repository     = var.repository
   file           = ".github/pull_request_template.md"
@@ -91,9 +74,6 @@ resource "github_repository_file" "pull_request_template" {
   branch         = "develop"
 }
 
-##############################
-# 5. Add deploy key named "DEPLOY_KEY"
-##############################
 resource "github_repository_deploy_key" "deploy_key" {
   repository = var.repository
   title      = "DEPLOY_KEY"
@@ -101,9 +81,6 @@ resource "github_repository_deploy_key" "deploy_key" {
   read_only  = true
 }
 
-##############################
-# 6. Configure Discord notifications (webhook) for pull requests
-##############################
 resource "github_repository_webhook" "discord" {
   repository_id = data.github_repository.repo.node_id
   active        = true
@@ -116,18 +93,12 @@ resource "github_repository_webhook" "discord" {
   }
 }
 
-##############################
-# 7. Create GitHub Actions secret for PAT (Personal Access Token)
-##############################
 resource "github_actions_secret" "pat" {
   repository      = var.repository
   secret_name     = "PAT"
   plaintext_value = var.pat
 }
 
-##############################
-# Variables
-##############################
 variable "github_token" {
   description = "GitHub token with permissions to manage repository settings."
   type        = string
