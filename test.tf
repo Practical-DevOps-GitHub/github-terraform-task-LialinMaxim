@@ -112,11 +112,16 @@ resource "github_repository_deploy_key" "deploy_key" {
 }
 
 # Create a webhook to send Discord notifications when a pull request is created
+variable "discord_webhook_url" {
+  description = "https://discord.com/api/webhooks/1348026892598509729/4pGfZoE7-pJ4sZroeV2pm_1S7aGxJdwVYkbXXJqZGY1_DGupuVzOrtO9p96siEI0le1v"
+  type        = string
+}
+
 resource "github_repository_webhook" "discord_webhook" {
   repository = github_repository.repo.name
 
   configuration {
-    url = var.DISCORD_WEB_HOOK  # Discord webhook URL from variable
+    url = var.discord_webhook_url  # Use discord_webhook_url variable here
     content_type = "json"
   }
 
