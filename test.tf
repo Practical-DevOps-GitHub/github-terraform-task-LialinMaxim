@@ -32,10 +32,9 @@ variable "deploy_key" {
   type        = string
 }
 
-variable "discord_webhook_url" {
+variable "DISCORD_WEB_HOOK" {
   description = "Discord webhook URL for pull request notifications"
   type        = string
-  default     = "https://discord.com/api/webhooks/1348026892598509729/4pGfZoE7-pJ4sZroeV2pm_1S7aGxJdwVYkbXXJqZGY1_DGupuVzOrtO9p96siEI0le1v"
 }
 
 # Create or reference the GitHub repository with 'develop' as the default branch
@@ -117,7 +116,7 @@ resource "github_repository_webhook" "discord_webhook" {
   repository = github_repository.repo.name
 
   configuration {
-    url          = var.discord_webhook_url  # Discord webhook URL
+    url = var.DISCORD_WEB_HOOK  # Discord webhook URL from variable
     content_type = "json"
   }
 
