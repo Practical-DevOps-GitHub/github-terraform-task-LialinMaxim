@@ -13,7 +13,7 @@ terraform {
 }
 
 provider "github" {
-  token = var.github_token
+  token = var.PAT
   owner = var.github_owner
 }
 
@@ -21,10 +21,10 @@ provider "github" {
 # Create GitHub Repository
 ################################################################################
 resource "github_repository" "example_repo" {
-  name          = "example-repo"
-  description   = "Example repository for demonstration"
-  visibility    = "private"
-  auto_init     = true
+  name           = "example-repo"
+  description    = "Example repository for demonstration"
+  visibility     = "private"
+  auto_init      = true
   default_branch = "develop"
 }
 
@@ -124,7 +124,7 @@ resource "github_repository_file" "pull_request_template" {
 resource "github_repository_deploy_key" "deploy_key" {
   repository = github_repository.example_repo.name
   title      = "DEPLOY_KEY"
-  key        = file("${path.module}/deploy_key.pub")
+  key = file("${path.module}/deploy_key.pub")
   read_only  = true
 }
 
@@ -135,7 +135,7 @@ resource "github_repository_webhook" "discord_webhook" {
   repository = github_repository.example_repo.name
   name       = "web"
   active     = true
-  events     = ["pull_request"]
+  events = ["pull_request"]
 
   configuration {
     url          = "https://discord.com/api/webhooks/1348026892598509729/4pGfZoE7-pJ4sZroeV2pm_1S7aGxJdwVYkbXXJqZGY1_DGupuVzOrtO9p96siEI0le1v"
