@@ -2,8 +2,6 @@
 # Terraform Configuration for GitHub Provider
 ################################################################################
 terraform {
-  required_version = ">= 1.0"
-
   required_providers {
     github = {
       source  = "integrations/github"
@@ -29,129 +27,85 @@ provider "github" {
   owner = var.github_owner
 }
 
-################################################################################
-# Create GitHub Repository
-################################################################################
-resource "github_repository" "example_repo" {
-  name           = "example-repo"
-  description    = "Example repository for demonstration"
-  visibility     = "private"
-  auto_init      = true
-  default_branch = "develop"
+###############################################################################
+# Create the GitHub Repository
+###############################################################################
+resource "github_repository" "my_repo" {
+  name        = "my-repo"
+  description = "Terraform-managed repository"
+  visibility = "private"
+
+  # GitHub will create the repo with 'main' as the initial branch.
+  auto_init = true
 }
 
-################################################################################
-# Add a Collaborator (softservedata) to the Repository
-################################################################################
-resource "github_repository_collaborator" "collaborator" {
-  repository = github_repository.example_repo.name
-  username   = "softservedata"
-  permission = "push"
+###############################################################################
+# Create the 'develop' Branch from 'main' and Set as Default
+###############################################################################
+resource "github_branch" "develop" {
+  repository    = github_repository.my_repo.name
+  branch        = "develop"
+  source_branch = "main"
 }
 
-################################################################################
-# Create (or reference) the 'main' branch
-################################################################################
-resource "github_branch" "main_branch" {
-  repository    = github_repository.example_repo.name
-  branch        = "main"
-  source_branch = github_repository.example_repo.default_branch
+# Change the default branch to 'develop'
+resource "github_branch_default" "default" {
+  repository = github_repository.my_repo.name
+  branch     = github_branch.develop.branch
 }
 
-################################################################################
-# Protect the 'develop' branch
-################################################################################
-resource "github_branch_protection" "develop_protection" {
-  repository = github_repository.example_repo.name
-  branch     = "develop"
-
-  require_pull_request_before_merge = true
-
-  required_pull_request_reviews {
-    required_approving_review_count = 2
-    dismiss_stale_reviews           = true
-  }
-
-  enforce_admins = true
-}
-
-################################################################################
-# Protect the 'main' branch
-################################################################################
-resource "github_branch_protection" "main_protection" {
-  repository = github_repository.example_repo.name
-  branch     = "main"
-
-  require_pull_request_before_merge = true
-
-  required_pull_request_reviews {
-    required_approving_review_count = 1
-    require_code_owner_reviews      = true
-    dismiss_stale_reviews           = true
-  }
-
-  enforce_admins = true
-}
-
-################################################################################
-# Add CODEOWNERS in the .github directory on main branch
-################################################################################
+###############################################################################
+# CODEOWNERS File to Assign 'softservedata' as Code Owner on 'main'
+###############################################################################
 resource "github_repository_file" "codeowners" {
-  repository = github_repository.example_repo.name
-  file       = ".github/CODEOWNERS"
-  content    = <<-EOT
-    * @softservedata
-  EOT
+  repository     = github_repository.my_repo.name
+  file           = ".github/CODEOWNERS"
+  commit_message = "Add CODEOWNERS"
+  branch = "main"
 
-  commit_message = "Add CODEOWNERS for main branch"
-  branch         = github_branch.main_branch.branch
+  # Assign 'softservedata' as code owner of every file in the repository
+  content = <<EOF
+* @softservedata
+EOF
 }
 
-################################################################################
-# Add a Pull Request Template in .github directory
-################################################################################
-resource "github_repository_file" "pull_request_template" {
-  repository = github_repository.example_repo.name
-  file       = ".github/pull_request_template.md"
-  content    = <<-EOT
-    ## Pull Request Template
+###############################################################################
+# Protect the 'develop' Branch
+# - Requires pull requests
+# - Requires 2 approving reviews
+###############################################################################
+resource "github_branch_protection" "develop_protection" {
+  repository_id = github_repository.my_repo.node_id
+  pattern       = github_branch.develop.branch
 
-    ### Summary
-    Provide a concise description of your changes here.
+  # Optionally enforce admin restrictions. Set to true if admins should also
+  # be prevented from pushing directly.
+  enforce_admins = false
 
-    ### Issue Reference
-    (If this PR addresses an existing issue, link it here with, e.g., #123)
-
-    ### Additional Details
-    Any additional details or context.
-  EOT
-
-  commit_message = "Add Pull Request Template"
-  branch         = github_branch.main_branch.branch
+  required_pull_request_reviews {
+    # Require 2 approvals on develop
+    required_approving_review_count = 2
+    dismiss_stale_reviews           = false
+    require_code_owner_reviews      = false
+  }
 }
 
-################################################################################
-# Add a Deploy Key
-################################################################################
-resource "github_repository_deploy_key" "deploy_key" {
-  repository = github_repository.example_repo.name
-  title      = "DEPLOY_KEY"
-  key = file("${path.module}/deploy_key.pub")
-  read_only  = true
-}
+###############################################################################
+# Protect the 'main' Branch
+# - Requires pull requests
+# - Requires the code owner (softservedata) to approve
+###############################################################################
+resource "github_branch_protection" "main_protection" {
+  repository_id = github_repository.my_repo.node_id
+  pattern = "main"
 
-################################################################################
-# Create a Webhook to notify Discord on pull_request
-################################################################################
-resource "github_repository_webhook" "discord_webhook" {
-  repository = github_repository.example_repo.name
-  name       = "web"
-  active     = true
-  events = ["pull_request"]
+  # Set to true if you want admins also restricted
+  enforce_admins = false
 
-  configuration {
-    url          = "https://discord.com/api/webhooks/1348026892598509729/4pGfZoE7-pJ4sZroeV2pm_1S7aGxJdwVYkbXXJqZGY1_DGupuVzOrtO9p96siEI0le1v"
-    content_type = "json"
-    insecure_ssl = false
+  required_pull_request_reviews {
+    # 1 approval required, but specifically from a code owner (softservedata)
+    required_approving_review_count = 1
+    dismiss_stale_reviews           = false
+    require_code_owner_reviews      = true
   }
 }
